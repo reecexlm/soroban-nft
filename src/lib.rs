@@ -30,15 +30,15 @@ pub struct StellarContract;
 #[contractimpl]
 impl StellarContract {
 
-    pub fn transfer(env: Env, token_id: u64, account_id: AccountId) {
+    pub fn transfer(env: Env, token_id: u64, transfer_to: Address) {
         // Get the current owner of the token
-        let token_account: Address = Address::Account(account_id);
+        //let token_account: Address = Address::Account(account_id);
         
         let mut token: StellarNft = env.storage()
             .get(token_id)
             .unwrap_or_else(|| Ok(StellarNft::default())) // If no value set, assume 0.
             .unwrap(); // Panic if the value of COUNTER is not a State. 
-            token.owner = Some(token_account);
+            token.owner = Some(transfer_to);
         env.storage().set(token_id, &token);
     }
 
