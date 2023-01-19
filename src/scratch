@@ -1,0 +1,66 @@
+use soroban_sdk::{smart_contract, storage, Soroban, U256};
+use std::str;
+
+// Define a struct to represent an NFT
+struct NFT {
+    id: U256,
+    owner: U256,
+    image_url: String,
+}
+
+// Implement the smart contract trait
+impl smart_contract::SmartContract for NFT {
+    // Mint a new NFT with a given ID and image URL
+    fn mint(&mut self, id: U256, image_url: &[u8]) {
+        // Ensure the NFT does not already exist
+        assert!(!self.nfts.contains_key(&id), "NFT already exists");
+
+        // Create the new NFT
+        let nft = NFT {
+            id,
+            owner: Soroban::sender(),
+            image_url: str::from_utf8(image_url).expect("Invalid image URL"),
+        };
+
+        // Store the NFT in the contract's storage
+        self.nfts.insert(id, nft);
+    }
+
+    // Transfer ownership of an NFT with a given ID to a new address
+    fn transfer(&mut self, id: U256, new_owner: U256) {
+        // Ensure the NFT exists
+        let nft = self.nfts.get(&id).expect("NFT does not exist");
+
+        // Ensure the sender is the current owner of the NFT
+        assert!(nft.owner == Soroban::sender(), "Sender is not the owner of the NFT");
+
+        // Update the NFT's owner in storage
+        let mut nft = nft.clone();
+        nft.owner = new_owner;
+        self.nfts.insert(id, nft);
+    }
+}
+
+// Define the smart contract entry point
+#[smart_contract::entry_point]
+fn main() {
+    // Create a new instance of the NFT smart contract
+    let mut contract = NFT {
+        nfts: storage::Map::new(),
+    };
+
+    // Call the appropriate function based on the input data
+    match Soroban::input_data().as_slice() {
+        b"mint" => {
+            let id = Soroban::read();
+            let image_url = Soroban::input_data().split_at(4).1;
+            contract.mint(id, image_url);
+        },
+        b"transfer" => {
+            let id = Soroban::read();
+            let new_owner = Soroban::read();
+            contract.transfer(id, new_owner);
+        },
+        _ => panic!("Invalid function"),
+    }
+}
